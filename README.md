@@ -1,32 +1,72 @@
-# sleepcode
+# 🌙 sleepcode
 
-`sleepcode` orchestrates bounded non-interactive coding-agent sessions over
-isolated git worktrees. It receives a task and guidelines file, grows a small
-search tree of builder, fixer, and rebuilder candidates, then writes a final
-report for human inspection.
+<p align="center">
+  <b>Tree-search orchestration for bounded non-interactive coding-agent sessions.</b>
+</p>
 
-It is meant for an overnight or background run: multiple fresh agent sessions,
-connected by lean reports instead of one long conversation.
+<p align="center">
+  Let agents code while you sleep. Wake up to a curated report.
+</p>
+
+<p align="center">
+  <a href="README.zh-CN.md">🇨🇳 简体中文</a>
+  ·
+  <a href="#-features">Features</a>
+  ·
+  <a href="#-quick-start">Quick Start</a>
+  ·
+  <a href="#-usage">Usage</a>
+  ·
+  <a href="#-architecture">Architecture</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue?logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+</p>
+
+---
+
+## ✨ Features
+
+- 🌲 **Tree Search** — Grows a search tree of builders, fixers, and rebuilders to explore multiple solution paths in parallel.
+- 🔒 **Isolated Worktrees** — Every candidate runs in its own isolated Git worktree; your original repo stays untouched.
+- 🤖 **Multi-Agent** — Orchestrates Codex, Kimi, and more. Workers, reviewers, and voters can be different agents.
+- 📝 **Rich Reports** — Produces a final human-readable report plus structured JSON and per-node artifacts.
+- ⏱️ **Overnight Friendly** — Designed for background runs. Start it, go to sleep, inspect results in the morning.
+- 🧪 **Pluggable Validation** — Supports custom test commands, auto-discovered unit tests, or compile-only smoke checks.
+
+## 🚀 Quick Start
 
 ```bash
-sleepcode run --repo /path/to/repo --task-file /path/to/task.md --guidelines-file /path/to/guideline.md
+# Install
+pip install -e .
+
+# Run
+sleepcode run \
+  --repo /path/to/repo \
+  --task-file /path/to/task.md \
+  --guidelines-file /path/to/guideline.md
+
+# Resume a previous run
 sleepcode resume --run-dir runs/<run-id>
 ```
 
-The original target repository is assumed to have no tests. Candidate agents may
-add tests under `.sleepcode/tests/`; sleepcode runs those tests when present.
+Artifacts are written under `runs/<run-id>/` by default. Start with:
 
-## Basic Usage
+```bash
+less runs/<run-id>/final_report.md
+```
 
-The target repository must be a clean git repo before a run starts.
+## 📖 Usage
 
-Paths passed to `--repo`, `--task-file`, `--guidelines-file`, and `--out` are
-resolved relative to the shell directory where you run `sleepcode`, unless they
-are absolute paths. The task and guidelines files do not need to live inside the
-target repository.
+### Basic Usage
 
-For example, if this workspace contains `OmegaWiki/`, `task.md`, and
-`guideline-for-cs.md`, run from the workspace root:
+The target repository must be a clean Git repo before a run starts.
+
+Paths passed to `--repo`, `--task-file`, `--guidelines-file`, and `--out` are resolved relative to your shell directory unless absolute.
+
+**Example (relative paths):**
 
 ```bash
 cd /home/woden/CS2
@@ -37,7 +77,7 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md
 ```
 
-The same command with absolute paths:
+**Same command with absolute paths:**
 
 ```bash
 sleepcode run \
@@ -46,27 +86,19 @@ sleepcode run \
   --guidelines-file /home/woden/CS2/guideline-for-cs.md
 ```
 
-Artifacts are written under `runs/<run-id>/` by default. The most useful files
-are:
+### Artifacts
 
-- `final_report.md`: morning report and recommended node.
-- `final_report.json`: structured run summary.
-- `sleepcode.sqlite3`: durable orchestration state and checkpoints.
-- `nodes/node-NNN/`: prompts, reports, diffs, validation logs, and raw agent logs.
-- `worktrees/node-NNN/`: candidate repositories for inspection.
+| File / Directory | Description |
+| :--- | :--- |
+| `final_report.md` | Human-readable morning report with the recommended node |
+| `final_report.json` | Structured run summary |
+| `sleepcode.sqlite3` | Durable orchestration state and checkpoints |
+| `nodes/node-NNN/` | Prompts, reports, diffs, validation logs, raw agent logs |
+| `worktrees/node-NNN/` | Candidate repositories for direct inspection |
 
-Resume a run with:
+### Search Parameters
 
-```bash
-sleepcode resume --run-dir runs/20260504-170000
-```
-
-Resume does not continue old agent conversations. It starts fresh bounded
-sessions from saved reports and checkpoints.
-
-## Choosing Search Parameters
-
-The defaults are intentionally modest:
+The defaults are intentionally modest for an overnight run:
 
 ```bash
 --max-nodes 8
@@ -77,38 +109,20 @@ The defaults are intentionally modest:
 --rebuilder-fanout 1
 ```
 
-`--max-nodes` is the total budget, including the root node. With the default
-`8`, sleepcode can create root plus up to seven candidate nodes.
+| Parameter | Description |
+| :--- | :--- |
+| `--max-nodes` | Total budget, including root. Default `8` means root + up to 7 candidates. |
+| `--builder-fanout` | Independent first attempts seeded from the untouched base. Increase for tasks with several plausible designs. |
+| `--fixer-fanout` | Per-parent repair attempts. Limits how many fixes a candidate can receive. |
+| `--rebuilder-fanout` | Per-parent fresh rebuilds. Starts again from base using a candidate's intent and reports. |
+| `--max-depth` | Tree depth below root. Builders are depth 1; fixers and rebuilders go deeper. |
+| `--jobs` | Concurrency only. Does not reduce total budget or fanout. |
 
-`--builder-fanout` controls how many independent first attempts are seeded from
-the untouched base. Increase it when the task has several plausible designs.
-Decrease it for small, localized tasks.
+### Suggested Profiles
 
-`--fixer-fanout` is per parent node. It limits how many minimal repair attempts a
-candidate can receive across the whole run.
-
-`--rebuilder-fanout` is also per parent node. It limits how many fresh rebuilds
-can be attempted from a candidate's intent and reports, starting again from the
-base instead of patching the parent worktree.
-
-`--max-depth` limits how far the tree can go below root. Builders are depth 1.
-Fixers and rebuilders are deeper children. Use a low depth for simple changes;
-use a higher depth when you expect several rounds of review and repair.
-
-`--jobs` is concurrency only. It does not reduce the total budget or fanout. For
-example, `--jobs 1 --builder-fanout 3` still allows three builders; they just run
-one at a time.
-
-Builder seeding happens before deeper expansion when possible. After that,
-agent voting decides whether each candidate should be fixed, rebuilt, or dropped.
-
-## Suggested Profiles
-
-Small, cheap run:
+**Small, cheap run:**
 
 ```bash
-cd /home/woden/CS2
-
 sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
@@ -121,22 +135,18 @@ sleepcode run \
   --jobs 1
 ```
 
-Default overnight run:
+**Default overnight run:**
 
 ```bash
-cd /home/woden/CS2
-
 sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
   --guidelines-file guideline-for-cs.md
 ```
 
-Broader design search:
+**Broader design search:**
 
 ```bash
-cd /home/woden/CS2
-
 sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
@@ -148,11 +158,9 @@ sleepcode run \
   --jobs 3
 ```
 
-Codex-only run:
+**Codex-only run:**
 
 ```bash
-cd /home/woden/CS2
-
 sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
@@ -160,42 +168,37 @@ sleepcode run \
   --agents codex
 ```
 
-## Agents
+## 🤖 Agents
 
-The default is:
+Default: `--agents codex,kimi`
 
-```bash
---agents codex,kimi
-```
+- **Workers** are weighted toward Codex: `Codex xhigh → Codex high → Kimi → repeat`.
+- **Review** tries to use a different agent from the worker when possible.
+- **Voting** uses multiple agent views and requires concrete evidence for `fix`, `rebuild`, or `drop`.
 
-Worker nodes are weighted toward Codex: Codex xhigh, Codex high, Kimi, then
-repeat. Review tries to use a different agent from the worker when possible.
-Voting uses multiple agent views and requires concrete evidence for `fix`,
-`rebuild`, or `drop`.
+| Flag | Description |
+| :--- | :--- |
+| `--agents codex` | Faster or simpler run |
+| `--agents kimi` | Kimi handles all roles |
+| `--model <name>` | Model override for supported agents |
 
-Use `--agents codex` for a faster or simpler run. Use `--agents kimi` only when
-you specifically want Kimi to handle all roles.
+## 🧪 Validation
 
-`--model` passes a model override to supported agents.
-
-## Validation
-
-By default, sleepcode assumes the original target repo has no tests.
+By default, sleepcode assumes the target repo has no tests.
 
 Validation order:
 
 1. If `--test-cmd` is supplied, run that command.
 2. Else, if a candidate created `.sleepcode/tests/test*.py`, run:
-   `python -m unittest discover -s .sleepcode/tests`
-3. Else, for Python repos, run a compile-only smoke check and report it as
-   `smoke`, not a full pass.
+   ```bash
+   python -m unittest discover -s .sleepcode/tests
+   ```
+3. Else, for Python repos, run a compile-only smoke check (reported as `smoke`, not a full pass).
 4. Else, report validation as `unknown`.
 
-Use `--test-cmd` when the target repo has a known reliable command:
+**Custom test command:**
 
 ```bash
-cd /home/woden/CS2
-
 sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
@@ -203,97 +206,90 @@ sleepcode run \
   --test-cmd "python -m pytest"
 ```
 
-## After The Run
+## 📋 After The Run
 
-Sleepcode does not merge, commit, or push anything. It leaves candidate changes
-in separate worktrees and writes patches under the run artifacts. A human still
-chooses what to accept.
+Sleepcode does **not** merge, commit, or push. It leaves candidate changes in separate worktrees and writes patches under the run artifacts. A human still chooses what to accept.
 
-Start with the final report:
+### Inspect the recommended candidate
 
 ```bash
-less runs/20260504-170000/final_report.md
+# Start with the final report
+less runs/<run-id>/final_report.md
+
+# Inspect the recommended node, e.g. node-008
+less runs/<run-id>/nodes/node-008/worker_report.md
+less runs/<run-id>/nodes/node-008/review_report.md
+less runs/<run-id>/nodes/node-008/validation.log
+git -C runs/<run-id>/worktrees/node-008 diff HEAD
 ```
 
-Find the recommended node, for example `node-008`, then inspect its artifacts:
+### Apply the patch
+
+Use a fresh branch based on the same base ref that sleepcode used:
 
 ```bash
-less runs/20260504-170000/nodes/node-008/worker_report.md
-less runs/20260504-170000/nodes/node-008/review_report.md
-less runs/20260504-170000/nodes/node-008/validation.log
-git -C runs/20260504-170000/worktrees/node-008 diff HEAD
-```
-
-Apply the patch to the real target repo only after inspection. Use a fresh branch
-based on the same base ref that sleepcode used:
-
-```bash
-cd /home/woden/CS2/OmegaWiki
+cd /path/to/target-repo
 git switch -c accept-sleepcode-node-008
 
-git apply --check /home/woden/CS2/runs/20260504-170000/nodes/node-008/diff.patch
-git apply --index /home/woden/CS2/runs/20260504-170000/nodes/node-008/diff.patch
+# Verify the patch applies cleanly
+git apply --check runs/<run-id>/nodes/node-008/diff.patch
+
+# Apply and stage
+git apply --index runs/<run-id>/nodes/node-008/diff.patch
 ```
 
-`git apply --check` verifies that the patch can apply cleanly. `git apply
---index` applies it and stages the result. If you prefer to review unstaged
-changes first, use `git apply` instead of `git apply --index`.
-
-If the target repository moved on after sleepcode started, a patch may fail
-because the context no longer matches. In that case, try a three-way apply:
+If the target repo moved on after sleepcode started, try a three-way apply:
 
 ```bash
-git apply --3way /home/woden/CS2/runs/20260504-170000/nodes/node-008/diff.patch
+git apply --3way runs/<run-id>/nodes/node-008/diff.patch
 ```
 
-Then resolve any conflicts as ordinary git conflicts.
+Then resolve conflicts as ordinary Git conflicts and run your own checks.
 
-After applying, run the target repo checks yourself:
+### Cleanup
 
 ```bash
-git diff --cached
-python3 tools/discover.py from-venue --venue neurips --year 2024 --wiki-root wiki --limit 3 --markdown
+# Remove run artifacts when no longer needed
+rm -rf runs/<run-id>
 ```
 
-If the candidate patch includes `.sleepcode/tests/`, decide whether to keep those
-tests, move their useful assertions into the target repo's normal test structure,
-or drop them before committing. They are candidate validation scaffolding, not an
-automatic merge requirement.
+If you started the run with `--cleanup-worktrees`, sleepcode removes candidate worktrees at the end, but reports and node artifacts remain.
 
-When satisfied:
+## ⚙️ Timeouts & Worktrees
 
-```bash
-git status
-git commit -m "Add venue/year discovery"
+| Flag | Default | Description |
+| :--- | :--- | :--- |
+| `--agent-timeout` | `3600` | Max wall-clock time for one agent turn (seconds) |
+| `--agent-startup-timeout` | `120` | Kill a turn that produces no initial output |
+| `--agent-idle-timeout` | `300` | Kill Codex turns after no output |
+| `--kimi-idle-timeout` | `0` | Disable Kimi idle timeout (Kimi may run sub-agents silently) |
+
+Candidate worktrees are kept by default (`--keep-worktrees`). Use `--cleanup-worktrees` when you only want reports and artifacts.
+
+## 🏗️ Architecture
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Task &    │────▶│   Root      │────▶│  Builders   │
+│ Guidelines  │     │   Node      │     │  (depth 1)  │
+└─────────────┘     └─────────────┘     └──────┬──────┘
+                                               │
+                    ┌──────────────────────────┼──────────┐
+                    ▼                          ▼          ▼
+              ┌─────────┐               ┌──────────┐ ┌──────────┐
+              │ Fixers  │               │ Rebuild  │ │  Vote /  │
+              │(repair) │               │(restart) │ │  Drop    │
+              └─────────┘               └──────────┘ └──────────┘
+                    │
+                    ▼
+            ┌───────────────┐
+            │ Final Report  │
+            │ (human-ready) │
+            └───────────────┘
 ```
 
-When you no longer need the run artifacts, remove them manually. If you started
-the run with `--cleanup-worktrees`, sleepcode removes candidate worktrees at the
-end, but the reports and node artifacts remain.
+The scheduler expands builder seeds first, then uses agent voting to decide whether each candidate should be fixed, rebuilt, or dropped.
 
-## Timeouts And Worktrees
+## 📄 License
 
-Agent timeout defaults:
-
-```bash
---agent-timeout 3600
---agent-startup-timeout 120
---agent-idle-timeout 300
---kimi-idle-timeout 0
-```
-
-`--agent-timeout` is the maximum wall-clock time for one agent turn.
-`--agent-startup-timeout` kills a turn that produces no initial output.
-`--agent-idle-timeout` kills Codex turns after no output.
-`--kimi-idle-timeout 0` disables Kimi idle timeout because Kimi may run
-sub-agents silently for a long time.
-
-Candidate worktrees are kept by default:
-
-```bash
---keep-worktrees
-```
-
-Use `--cleanup-worktrees` when you only want reports and artifacts. Keeping
-worktrees is usually better while the tool is young, because it lets you inspect
-the recommended candidate directly.
+MIT
