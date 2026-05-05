@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sleepcode"
+version = "0.1.0"
+description = "Tree-search orchestration for bounded coding-agent sessions."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+sleepcode = "sleepcode.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["sleepcode*"]
