@@ -92,6 +92,7 @@ sleepcode run \
 | :--- | :--- |
 | `final_report.md` | 面向人类的晨间报告，包含推荐节点 |
 | `final_report.json` | 结构化运行摘要 |
+| `expostulation.md` | 本次运行共享的可复用实现证据 |
 | `sleepcode.sqlite3` | 持久的编排状态与检查点 |
 | `nodes/node-NNN/` | 提示词、报告、diff、验证日志、原始代理日志 |
 | `worktrees/node-NNN/` | 可直接查看的候选仓库 |

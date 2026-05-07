@@ -64,6 +64,34 @@ Review report:
     return "\n\n".join(blocks) or "No candidate nodes completed."
 
 
+def render_expostulation_markdown(entries: list[dict[str, Any]]) -> str:
+    lines = [
+        "# Expostulation Blackboard",
+        "",
+        "Shared per-run implementation evidence. `task.md` and `guidelines.md` remain authoritative.",
+        "",
+    ]
+    if not entries:
+        lines.append("No high-confidence entries yet.")
+        return "\n".join(lines).rstrip() + "\n"
+
+    for entry in entries:
+        lines.extend(
+            [
+                f"## {entry['title']}",
+                "",
+                f"- Kind: `{entry['kind']}`",
+                f"- Source node: `{entry['source_node_id']}`",
+                f"- Claim: {entry['claim']}",
+                f"- Reuse guidance: {entry['reuse_guidance']}",
+                f"- Affected files: {_format_inline_list(entry.get('affected_files', []))}",
+                f"- Evidence paths: {_format_inline_list(entry.get('evidence_paths', []))}",
+                "",
+            ]
+        )
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def write_report_json(config: RunConfig, store: SearchStore, stop_reason: str, report_path: Path) -> None:
     write_json(
         config.run_dir / "final_report.json",
@@ -100,6 +128,7 @@ def write_report_json(config: RunConfig, store: SearchStore, stop_reason: str, r
                 }
                 for node in store.list_nodes()
             ],
+            "expostulation": store.list_expostulation_entries(),
             "role_runs": store.list_role_runs(),
             "checkpoints": store.list_checkpoints(),
             "vote_decisions": store.list_vote_decisions(),
@@ -146,3 +175,9 @@ def write_fallback_final_report(config: RunConfig, store: SearchStore, stop_reas
         lines.append("```")
     write_text(report_path, "\n".join(lines).rstrip() + "\n")
     return report_path
+
+
+def _format_inline_list(values: object) -> str:
+    if not isinstance(values, list) or not values:
+        return "-"
+    return ", ".join(f"`{value}`" for value in values)

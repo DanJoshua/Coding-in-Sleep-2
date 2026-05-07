@@ -20,6 +20,7 @@ Context:
 Required reading:
 - Read `task.md` and `guidelines.md` from the context directory. They are authoritative.
 - Read `manifest.md` for file priority and available evidence.
+- Read `expostulation.md` as shared evidence; reuse only relevant high-confidence entries.
 {parent_instruction}
 
 Return only a compact work brief with these headings:
@@ -64,6 +65,7 @@ Context:
 
 Required reading:
 - Read `manifest.md` for file priority and available evidence.
+- Read `expostulation.md` as shared evidence; reuse only relevant high-confidence entries.
 {brief_instruction}- Use `task.md` and `guidelines.md` as the final source of truth when the brief or reports are incomplete.
 {parent_instruction}
 
@@ -99,6 +101,7 @@ Context:
 
 Required reading:
 - Read `manifest.md`, `worker_report.md`, and `validation.json`.
+- Read `expostulation.md` as shared evidence, not as review criteria.
 - Consult `task.md` and `guidelines.md` when judging whether the diff satisfies the actual request.
 - Inspect the worktree changes directly; the worker report is only evidence.
 
@@ -115,6 +118,39 @@ Also end with a fenced JSON object exactly in this shape:
 """
 
 
+def expostulation_prompt(config: RunConfig, node: Node, context_dir: Path, agent: str = "") -> str:
+    agent = agent.strip().lower()
+    if agent == "codex":
+        skill_trigger = "Use $sleepcode-expostulate to curate reusable implementation knowledge."
+    else:
+        skill_trigger = "Run the sleepcode expostulation workflow to curate reusable implementation knowledge."
+
+    return f"""You are the expostulator for sleepcode node {node.id}.
+
+{skill_trigger}
+
+Context:
+{_context_pointer(config, context_dir)}
+
+Required reading:
+- Read `manifest.md` for file priority and available evidence.
+- Read `expostulation.md` to avoid duplicating existing shared evidence.
+- Read `worker_report.md`, `review_report.md`, `validation.json`, and `diffstat.txt` when present.
+- Consult `task.md` and `guidelines.md` before accepting any reusable claim.
+
+Rules:
+- Do not edit files.
+- Do not expostulate when unsure; empty output is successful.
+- Prefer no entries over weak or non-reusable entries.
+- Inspect changed code only when the compact artifacts identify a concrete reusable candidate or ambiguity.
+
+Return only JSON in this shape:
+```json
+{{"entries":[{{"kind":"validated_module|repair_pattern|pitfall","title":"short reusable title","claim":"one evidence-backed claim","affected_files":["path"],"evidence_paths":["path"],"reuse_guidance":"how later agents should use or avoid this"}}]}}
+```
+"""
+
+
 def vote_prompt(config: RunConfig, context_dir: Path) -> str:
     return f"""You are voting on how sleepcode should spend its next expansion budget.
 
@@ -126,6 +162,7 @@ Ground every vote in concrete evidence from reports and mechanical facts. Do not
 
 Required reading:
 - Read `candidates.md`.
+- Read `expostulation.md` when reusable evidence helps interpret a candidate.
 - Consult `task.md` and `guidelines.md` only when a decision depends on the original request or constraints.
 
 Return only JSON in this shape:
@@ -145,6 +182,7 @@ Stop reason: {stop_reason}
 
 Required reading:
 - Read `node_summaries.md`.
+- Read `expostulation.md` for reusable implementation evidence discovered during the run.
 - Consult `task.md` and `guidelines.md` when deciding which node best satisfies the original request.
 
 Recommend the best node for human inspection or use. Cover:

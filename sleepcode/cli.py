@@ -146,23 +146,24 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _install_skills(args: argparse.Namespace) -> int:
-    skill_name = "sleepcode-review"
-    source = Path(__file__).parent.parent / "skills" / skill_name
-    if not source.exists():
-        print(f"error: skill source not found: {source}", file=sys.stderr)
-        return 1
-
+    skill_names = ("sleepcode-review", "sleepcode-expostulate")
+    source_root = Path(__file__).parent.parent / "skills"
     codex_dir = Path(args.codex_dir)
     kimi_dir = Path(args.kimi_dir)
     installed = False
 
-    for target_dir in (codex_dir, kimi_dir):
-        target = target_dir / skill_name
-        if target.exists():
-            shutil.rmtree(target)
-        shutil.copytree(source, target)
-        print(f"Installed {skill_name} -> {target}")
-        installed = True
+    for skill_name in skill_names:
+        source = source_root / skill_name
+        if not source.exists():
+            print(f"error: skill source not found: {source}", file=sys.stderr)
+            return 1
+        for target_dir in (codex_dir, kimi_dir):
+            target = target_dir / skill_name
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(source, target)
+            print(f"Installed {skill_name} -> {target}")
+            installed = True
 
     if not installed:
         print("error: no skill directories were installed", file=sys.stderr)

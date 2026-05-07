@@ -77,8 +77,13 @@ class FakeValidator:
 
 
 class FakeAgents:
-    def __init__(self, vote_actions: dict[int, str] | None = None):
+    def __init__(
+        self,
+        vote_actions: dict[int, str] | None = None,
+        expostulation_entries: list[dict[str, object]] | None = None,
+    ):
         self.vote_actions = vote_actions or {}
+        self.expostulation_entries = expostulation_entries or []
         self.calls: list[dict[str, object]] = []
 
     def run(
@@ -106,6 +111,7 @@ class FakeAgents:
                 "reasoning_effort": reasoning_effort,
                 "plan_mode": plan_mode,
                 "extra_context_dirs": extra_context_dirs,
+                "prompt": prompt,
             }
         )
         if role == "voter":
@@ -119,7 +125,14 @@ class FakeAgents:
         elif role == "assessment":
             write_text(final_path, "Task reading\nBrief.\n")
         elif role == "reviewer":
-            write_text(final_path, "Verdict\nLooks usable.\n\nSuggested next action: drop\n")
+            write_text(
+                final_path,
+                "Verdict\nready\n\n"
+                "Suggested next action: drop\n\n"
+                '```json\n{"suggested_next_action":"drop","findings":[]}\n```\n',
+            )
+        elif role == "expostulator":
+            write_text(final_path, json.dumps({"entries": self.expostulation_entries}))
         else:
             write_text(final_path, "Summary\nChanged app.py.\n\nSuggested next action\nfix\n")
             write_text(worktree / "app.py", "value = 2\n")
