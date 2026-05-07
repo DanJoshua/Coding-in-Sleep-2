@@ -92,6 +92,7 @@ sleepcode run \
 | :--- | :--- |
 | `final_report.md` | Human-readable morning report with the recommended node |
 | `final_report.json` | Structured run summary |
+| `expostulation.md` | Shared per-run reusable implementation evidence |
 | `sleepcode.sqlite3` | Durable orchestration state and checkpoints |
 | `nodes/node-NNN/` | Prompts, reports, diffs, validation logs, raw agent logs |
 | `worktrees/node-NNN/` | Candidate repositories for direct inspection |
@@ -101,7 +102,7 @@ sleepcode run \
 The defaults are intentionally modest for an overnight run:
 
 ```bash
---max-nodes 8
+--max-nodes 16
 --max-depth 3
 --jobs 2
 --builder-fanout 3
@@ -111,7 +112,8 @@ The defaults are intentionally modest for an overnight run:
 
 | Parameter | Description |
 | :--- | :--- |
-| `--max-nodes` | Total budget, including root. Default `8` means root + up to 7 candidates. |
+| `--max-nodes` | Total budget, including root. Default `16` means root + up to 15 candidates. |
+| `--day-mode` | Quick daytime run. Overrides `--max-nodes` to `8` unless you also set `--max-nodes` explicitly. |
 | `--builder-fanout` | Independent first attempts seeded from the untouched base. Increase for tasks with several plausible designs. |
 | `--fixer-fanout` | Per-parent repair attempts. Limits how many fixes a candidate can receive. |
 | `--rebuilder-fanout` | Per-parent fresh rebuilds. Starts again from base using a candidate's intent and reports. |
@@ -144,6 +146,16 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md
 ```
 
+**Daytime run (fewer nodes):**
+
+```bash
+sleepcode run \
+  --repo OmegaWiki \
+  --task-file task.md \
+  --guidelines-file guideline-for-cs.md \
+  --day-mode
+```
+
 **Broader design search:**
 
 ```bash
@@ -151,7 +163,7 @@ sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
   --guidelines-file guideline-for-cs.md \
-  --max-nodes 12 \
+  --max-nodes 24 \
   --builder-fanout 4 \
   --fixer-fanout 2 \
   --rebuilder-fanout 2 \
@@ -263,6 +275,7 @@ If you started the run with `--cleanup-worktrees`, sleepcode removes candidate w
 | `--agent-startup-timeout` | `120` | Kill a turn that produces no initial output |
 | `--agent-idle-timeout` | `300` | Kill Codex turns after no output |
 | `--kimi-idle-timeout` | `0` | Disable Kimi idle timeout (Kimi may run sub-agents silently) |
+| `--allow-network` | `false` | Allow Codex agents outbound network access (tests that hit external APIs) |
 
 Candidate worktrees are kept by default (`--keep-worktrees`). Use `--cleanup-worktrees` when you only want reports and artifacts.
 

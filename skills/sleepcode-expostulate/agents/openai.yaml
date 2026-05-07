@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sleepcode Expostulate"
+  short_description: "Curate reusable sleepcode evidence"
+  default_prompt: "Use $sleepcode-expostulate to curate high-confidence reusable sleepcode evidence."

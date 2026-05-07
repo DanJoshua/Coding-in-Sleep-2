@@ -92,6 +92,7 @@ sleepcode run \
 | :--- | :--- |
 | `final_report.md` | 面向人类的晨间报告，包含推荐节点 |
 | `final_report.json` | 结构化运行摘要 |
+| `expostulation.md` | 本次运行共享的可复用实现证据 |
 | `sleepcode.sqlite3` | 持久的编排状态与检查点 |
 | `nodes/node-NNN/` | 提示词、报告、diff、验证日志、原始代理日志 |
 | `worktrees/node-NNN/` | 可直接查看的候选仓库 |
@@ -101,7 +102,7 @@ sleepcode run \
 默认值是为夜间运行而设，比较保守：
 
 ```bash
---max-nodes 8
+--max-nodes 16
 --max-depth 3
 --jobs 2
 --builder-fanout 3
@@ -111,7 +112,8 @@ sleepcode run \
 
 | 参数 | 说明 |
 | :--- | :--- |
-| `--max-nodes` | 总预算，包含根节点。默认 `8` 表示根节点 + 最多 7 个候选节点。 |
+| `--max-nodes` | 总预算，包含根节点。默认 `16` 表示根节点 + 最多 15 个候选节点。 |
+| `--day-mode` | 白天快速运行。如果没有同时显式指定 `--max-nodes`，则将其覆盖为 `8`。 |
 | `--builder-fanout` | 从干净基线出发的独立首次尝试数量。对于有多种可行设计的任务可以增大。 |
 | `--fixer-fanout` | 每个父节点的修复尝试上限。限制单个候选在整个运行中可获得的修复次数。 |
 | `--rebuilder-fanout` | 每个父节点的重建尝试上限。基于候选的意图和报告，从基线重新开始。 |
@@ -144,6 +146,16 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md
 ```
 
+**白天运行（更少节点）：**
+
+```bash
+sleepcode run \
+  --repo OmegaWiki \
+  --task-file task.md \
+  --guidelines-file guideline-for-cs.md \
+  --day-mode
+```
+
 **更广泛的设计搜索：**
 
 ```bash
@@ -151,7 +163,7 @@ sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
   --guidelines-file guideline-for-cs.md \
-  --max-nodes 12 \
+  --max-nodes 24 \
   --builder-fanout 4 \
   --fixer-fanout 2 \
   --rebuilder-fanout 2 \
@@ -263,6 +275,7 @@ rm -rf runs/<run-id>
 | `--agent-startup-timeout` | `120` | 终止没有初始输出的回合 |
 | `--agent-idle-timeout` | `300` | Codex 在无输出后终止 |
 | `--kimi-idle-timeout` | `0` | 禁用 Kimi 空闲超时（Kimi 可能会静默运行子代理很长时间） |
+| `--allow-network` | `false` | 允许 Codex 代理访问外部网络（用于测试需要调用外部 API 的场景） |
 
 候选工作区默认保留（`--keep-worktrees`）。如果你只想要报告和产物，请使用 `--cleanup-worktrees`。
 

@@ -5,7 +5,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from sleepcode.models import NODE_BUILDER, Node
-from sleepcode.prompts import assessment_prompt, candidate_context, review_prompt, vote_prompt, worker_prompt
+from sleepcode.prompts import assessment_prompt, candidate_context, expostulation_prompt, review_prompt, vote_prompt, worker_prompt
 
 from tests.helpers import TempDirTestCase, make_config
 
@@ -37,6 +37,7 @@ class PromptContextTests(TempDirTestCase, unittest.TestCase):
             assessment_prompt(config, node, None, context_dir),
             worker_prompt(config, node, None, context_dir),
             review_prompt(config, node, context_dir, agent="codex"),
+            expostulation_prompt(config, node, context_dir, agent="codex"),
             vote_prompt(config, context_dir),
         ]
 
@@ -90,6 +91,20 @@ class PromptContextTests(TempDirTestCase, unittest.TestCase):
         prompt = review_prompt(config, node, context_dir, agent="kimi")
         self.assertIn("sleepcode review", prompt)
         self.assertNotIn("$sleepcode-review", prompt)
+
+    def test_expostulation_prompt_uses_agent_specific_skill_trigger(self) -> None:
+        config = make_config(self.root)
+        node = make_node(self.root)
+        context_dir = self.root / "context"
+
+        codex_prompt = expostulation_prompt(config, node, context_dir, agent="codex")
+        kimi_prompt = expostulation_prompt(config, node, context_dir, agent="kimi")
+
+        self.assertIn("$sleepcode-expostulate", codex_prompt)
+        self.assertIn("sleepcode expostulation workflow", kimi_prompt)
+        self.assertNotIn("$sleepcode-expostulate", kimi_prompt)
+        self.assertIn('"entries"', codex_prompt)
+        self.assertIn("Do not expostulate when unsure", codex_prompt)
 
 
 if __name__ == "__main__":

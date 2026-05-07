@@ -21,6 +21,7 @@ class AgentRunner:
         *,
         model: str | None = None,
         sandbox: str = "workspace-write",
+        allow_network: bool = False,
         timeout_seconds: int = 3600,
         startup_timeout_seconds: int = 120,
         idle_timeout_seconds: int = 300,
@@ -28,6 +29,7 @@ class AgentRunner:
     ):
         self.model = model
         self.sandbox = sandbox
+        self.allow_network = allow_network
         self.timeout_seconds = timeout_seconds
         self.startup_timeout_seconds = startup_timeout_seconds
         self.idle_timeout_seconds = idle_timeout_seconds
@@ -70,6 +72,8 @@ class AgentRunner:
             "--output-last-message",
             str(final_message_path),
         ]
+        if self.allow_network:
+            command.extend(["-c", "sandbox_workspace_write.network_access=true"])
         for context_dir in extra_context_dirs:
             command.extend(["--add-dir", str(context_dir)])
         for feature in ("apps", "plugins", "browser_use", "computer_use", "image_generation", "tool_search", "tool_suggest"):
