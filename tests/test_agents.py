@@ -53,6 +53,35 @@ class AgentCommandTests(TempDirTestCase, unittest.TestCase):
         self.assertIn("--plan", command)
         self.assertIn("kimi-test", command)
 
+    def test_codex_command_includes_network_flag_when_allowed(self) -> None:
+        runner = AgentRunner(model="gpt-test", allow_network=True)
+        final_path = self.root / "final.md"
+
+        command = runner.build_command(
+            agent="codex",
+            role="builder",
+            worktree=self.root,
+            final_message_path=final_path,
+            sandbox="workspace-write",
+        )
+
+        self.assertIn("-c", command)
+        self.assertIn("sandbox_workspace_write.network_access=true", command)
+
+    def test_codex_command_omits_network_flag_by_default(self) -> None:
+        runner = AgentRunner(model="gpt-test")
+        final_path = self.root / "final.md"
+
+        command = runner.build_command(
+            agent="codex",
+            role="builder",
+            worktree=self.root,
+            final_message_path=final_path,
+            sandbox="workspace-write",
+        )
+
+        self.assertNotIn("sandbox_workspace_write.network_access=true", command)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -25,7 +25,7 @@ class RunConfig:
     out_dir: Path
     run_id: str
     run_dir: Path
-    max_nodes: int = 8
+    max_nodes: int = 16
     max_depth: int = 3
     jobs: int = 2
     builder_fanout: int = 3
@@ -36,6 +36,7 @@ class RunConfig:
     model: str | None = None
     sandbox: str = "workspace-write"
     keep_worktrees: bool = True
+    allow_network: bool = False
     agent_timeout_seconds: int = 3600
     agent_startup_timeout_seconds: int = 120
     agent_idle_timeout_seconds: int = 300
@@ -63,6 +64,7 @@ class RunConfig:
             "model": self.model,
             "sandbox": self.sandbox,
             "keep_worktrees": self.keep_worktrees,
+            "allow_network": self.allow_network,
             "agent_timeout_seconds": self.agent_timeout_seconds,
             "agent_startup_timeout_seconds": self.agent_startup_timeout_seconds,
             "agent_idle_timeout_seconds": self.agent_idle_timeout_seconds,
@@ -92,6 +94,7 @@ class RunConfig:
             model=data.get("model"),
             sandbox=str(data["sandbox"]),
             keep_worktrees=bool(data["keep_worktrees"]),
+            allow_network=bool(data.get("allow_network", False)),
             agent_timeout_seconds=int(data["agent_timeout_seconds"]),
             agent_startup_timeout_seconds=int(data["agent_startup_timeout_seconds"]),
             agent_idle_timeout_seconds=int(data["agent_idle_timeout_seconds"]),

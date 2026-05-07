@@ -59,6 +59,7 @@ class Scheduler:
         self.agents = agents or AgentRunner(
             model=config.model,
             sandbox=config.sandbox,
+            allow_network=config.allow_network,
             timeout_seconds=config.agent_timeout_seconds,
             startup_timeout_seconds=config.agent_startup_timeout_seconds,
             idle_timeout_seconds=config.agent_idle_timeout_seconds,
