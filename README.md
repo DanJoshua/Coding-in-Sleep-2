@@ -1,7 +1,7 @@
-# 🌙 sleepcode
+# 🌙 sleepcode — CS2
 
 <p align="center">
-  <b>Tree-search orchestration for bounded non-interactive coding-agent sessions.</b>
+  <b>Coding-in-Sleep-2 (CS2): Tree-search orchestration for bounded non-interactive coding-agent sessions.</b>
 </p>
 
 <p align="center">
@@ -35,6 +35,7 @@
 - 📝 **Rich Reports** — Produces a final human-readable report plus structured JSON and per-node artifacts.
 - ⏱️ **Overnight Friendly** — Designed for background runs. Start it, go to sleep, inspect results in the morning.
 - 🧪 **Pluggable Validation** — Supports custom test commands, auto-discovered unit tests, or compile-only smoke checks.
+- 🧠 **Expostulation Blackboard** — Per-run shared knowledge surface where agents curate and reuse high-confidence implementation evidence (validated modules, repair patterns, concrete pitfalls).
 
 ## 🚀 Quick Start
 
@@ -220,6 +221,24 @@ sleepcode run \
 
 ## 📋 After The Run
 
+## 🧠 Expostulation Blackboard
+
+CS2 maintains a per-run **expostulation blackboard** (`expostulation.md`) so agents can reuse hard-won implementation knowledge instead of rediscovering it in every turn.
+
+### How it works
+
+1. **After each node completes** its worker and review, an **expostulator agent** reads the worker report, review report, validation result, diff evidence, and the current blackboard.
+2. It emits **only high-confidence, reusable entries** grounded in concrete evidence. There are three kinds:
+   - **`validated_module`** — Code that implements a useful function well, confirmed by passing validation and an un-contradicted review.
+   - **`repair_pattern`** — A concrete fix pattern that corrected (or is likely to correct) a repeated implementation pitfall.
+   - **`pitfall`** — A concrete failure mode or avoidance rule backed by observed evidence.
+3. Entries are appended to the blackboard. The blackboard is **not** a review, audit log, or speculation surface; an empty result is a successful result when the evidence is weak.
+4. **All subsequent agents** (builders, fixers, rebuilders, reviewers, voters, and the final report) read `expostulation.md` as shared run evidence. They reuse only relevant entries, while `task.md` and `guidelines.md` remain the authoritative source of truth.
+
+This design is inspired by the observation that agents often repeat the same mistakes or re-validate the same modules across sibling nodes. The blackboard turns those lessons into durable, evidence-backed context.
+
+## 📋 After The Run
+
 Sleepcode does **not** merge, commit, or push. It leaves candidate changes in separate worktrees and writes patches under the run artifacts. A human still chooses what to accept.
 
 ### Inspect the recommended candidate
@@ -301,7 +320,7 @@ Candidate worktrees are kept by default (`--keep-worktrees`). Use `--cleanup-wor
             └───────────────┘
 ```
 
-The scheduler expands builder seeds first, then uses agent voting to decide whether each candidate should be fixed, rebuilt, or dropped.
+The scheduler expands builder seeds first, then uses agent voting to decide whether each candidate should be fixed, rebuilt, or dropped. As nodes complete, the expostulator curates reusable evidence into the shared blackboard, which feeds back into all later agent turns.
 
 ## 📄 License
 
