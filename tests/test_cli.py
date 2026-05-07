@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import unittest
 
-from sleepcode.cli import build_parser, config_from_args, load_resume_config, parse_agents
+from sleepcode.cli import build_parser, config_from_args, load_resume_config, main, parse_agents
 from sleepcode.store import SearchStore
 from sleepcode.util import write_text
 
@@ -49,6 +49,17 @@ class CliTests(TempDirTestCase, unittest.TestCase):
 
         self.assertEqual(loaded.run_dir, config.run_dir)
         self.assertEqual(loaded.agents, config.agents)
+
+    def test_install_skills_installs_review_and_expostulate_for_codex_and_kimi(self) -> None:
+        codex_dir = self.root / "codex-skills"
+        kimi_dir = self.root / "kimi-skills"
+
+        result = main(["install-skills", "--codex-dir", str(codex_dir), "--kimi-dir", str(kimi_dir)])
+
+        self.assertEqual(result, 0)
+        for target_dir in (codex_dir, kimi_dir):
+            self.assertTrue((target_dir / "sleepcode-review" / "SKILL.md").exists())
+            self.assertTrue((target_dir / "sleepcode-expostulate" / "SKILL.md").exists())
 
 
 if __name__ == "__main__":

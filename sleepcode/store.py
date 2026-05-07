@@ -106,6 +106,20 @@ class SearchStore:
                     FOREIGN KEY(round_id) REFERENCES vote_rounds(id),
                     FOREIGN KEY(node_id) REFERENCES nodes(id)
                 );
+
+                CREATE TABLE IF NOT EXISTS expostulation_entries (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    kind TEXT NOT NULL,
+                    title TEXT NOT NULL,
+                    claim TEXT NOT NULL,
+                    source_node_id INTEGER NOT NULL,
+                    affected_files_json TEXT NOT NULL DEFAULT '[]',
+                    evidence_paths_json TEXT NOT NULL DEFAULT '[]',
+                    reuse_guidance TEXT NOT NULL,
+                    raw_path TEXT NOT NULL DEFAULT '',
+                    created_at TEXT NOT NULL,
+                    FOREIGN KEY(source_node_id) REFERENCES nodes(id)
+                );
                 """
             )
             self._conn.commit()
@@ -401,6 +415,53 @@ class SearchStore:
             rows = self._conn.execute(query, params).fetchall()
         return [
             dict(row) | {"evidence": json.loads(row["evidence_json"] or "[]"), "valid": bool(row["valid"])}
+            for row in rows
+        ]
+
+    def add_expostulation_entry(
+        self,
+        *,
+        kind: str,
+        title: str,
+        claim: str,
+        source_node_id: int,
+        affected_files: list[str],
+        evidence_paths: list[str],
+        reuse_guidance: str,
+        raw_path: Path,
+    ) -> int:
+        with self._lock:
+            cursor = self._conn.execute(
+                """
+                INSERT INTO expostulation_entries (
+                    kind, title, claim, source_node_id, affected_files_json,
+                    evidence_paths_json, reuse_guidance, raw_path, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    kind,
+                    title,
+                    claim,
+                    source_node_id,
+                    json.dumps(affected_files, sort_keys=True),
+                    json.dumps(evidence_paths, sort_keys=True),
+                    reuse_guidance,
+                    str(raw_path),
+                    now_iso(),
+                ),
+            )
+            self._conn.commit()
+            return int(cursor.lastrowid)
+
+    def list_expostulation_entries(self) -> list[dict[str, Any]]:
+        with self._lock:
+            rows = self._conn.execute("SELECT * FROM expostulation_entries ORDER BY id").fetchall()
+        return [
+            dict(row)
+            | {
+                "affected_files": json.loads(row["affected_files_json"] or "[]"),
+                "evidence_paths": json.loads(row["evidence_paths_json"] or "[]"),
+            }
             for row in rows
         ]
 

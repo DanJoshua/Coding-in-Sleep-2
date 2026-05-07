@@ -92,6 +92,7 @@ sleepcode run \
 | :--- | :--- |
 | `final_report.md` | Human-readable morning report with the recommended node |
 | `final_report.json` | Structured run summary |
+| `expostulation.md` | Shared per-run reusable implementation evidence |
 | `sleepcode.sqlite3` | Durable orchestration state and checkpoints |
 | `nodes/node-NNN/` | Prompts, reports, diffs, validation logs, raw agent logs |
 | `worktrees/node-NNN/` | Candidate repositories for direct inspection |

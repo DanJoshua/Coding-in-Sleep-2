@@ -11,6 +11,7 @@ NODE_FIXER = "fixer"
 NODE_REBUILDER = "rebuilder"
 
 EXPANSION_ACTIONS = ("fix", "rebuild", "drop")
+EXPOSTULATION_KINDS = ("validated_module", "repair_pattern", "pitfall")
 
 
 @dataclass(frozen=True)

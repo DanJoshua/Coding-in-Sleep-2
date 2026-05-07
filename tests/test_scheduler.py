@@ -92,8 +92,84 @@ class SchedulerTests(TempDirTestCase, unittest.TestCase):
         )
         self.assertTrue((node_dir / "context" / "worker" / "work_brief.md").exists())
         self.assertTrue((node_dir / "context" / "reviewer" / "worker_report.md").exists())
+        self.assertTrue((node_dir / "context" / "reviewer" / "expostulation.md").exists())
+        self.assertTrue((node_dir / "context" / "expostulator" / "review_report.md").exists())
+        self.assertTrue((node_dir / "context" / "expostulator" / "diffstat.txt").exists())
         self.assertTrue((config.run_dir / "final" / "context" / "final_report" / "node_summaries.md").exists())
+        self.assertTrue((config.run_dir / "final" / "context" / "final_report" / "expostulation.md").exists())
         self.assertTrue(all(call["extra_context_dirs"] for call in fake_agents.calls))
+
+    def test_review_is_followed_by_read_only_expostulation(self) -> None:
+        config = make_config(self.root, max_nodes=2, max_depth=1, builder_fanout=1, jobs=1)
+        store = SearchStore(config.run_dir / "sleepcode.sqlite3")
+        fake_agents = FakeAgents()
+
+        Scheduler(
+            config,
+            store=store,
+            git=FakeGit(config),
+            agents=fake_agents,
+            validator=FakeValidator(),
+        ).run()
+
+        roles = [str(call["role"]) for call in fake_agents.calls]
+        self.assertLess(roles.index("reviewer"), roles.index("expostulator"))
+        expostulator_call = next(call for call in fake_agents.calls if call["role"] == "expostulator")
+        self.assertEqual(expostulator_call["agent"], "kimi")
+        self.assertEqual(expostulator_call["sandbox"], "read-only")
+        self.assertTrue(expostulator_call["plan_mode"])
+        self.assertIn("sleepcode expostulation workflow", str(expostulator_call["prompt"]))
+        self.assertNotIn("$sleepcode-expostulate", str(expostulator_call["prompt"]))
+
+    def test_expostulation_accepts_validated_module_only_after_passed_validation(self) -> None:
+        entry = {
+            "kind": "validated_module",
+            "title": "App value update",
+            "claim": "The app value update is validated for the requested behavior.",
+            "affected_files": ["app.py"],
+            "evidence_paths": ["validation.json", "review_report.md"],
+            "reuse_guidance": "Reuse the direct assignment pattern for this simple value update.",
+        }
+        config = make_config(self.root, max_nodes=2, max_depth=1, builder_fanout=1, jobs=1)
+        store = SearchStore(config.run_dir / "sleepcode.sqlite3")
+
+        Scheduler(
+            config,
+            store=store,
+            git=FakeGit(config),
+            agents=FakeAgents(expostulation_entries=[entry]),
+            validator=FakeValidator(status="fail", returncode=1),
+        ).run()
+
+        self.assertEqual(store.list_expostulation_entries(), [])
+        blackboard = (config.run_dir / "expostulation.md").read_text(encoding="utf-8")
+        self.assertIn("No high-confidence entries yet.", blackboard)
+
+    def test_expostulation_renders_accepted_entries(self) -> None:
+        entry = {
+            "kind": "repair_pattern",
+            "title": "Keep validation inputs explicit",
+            "claim": "The worker fixed the issue by passing validation inputs explicitly.",
+            "affected_files": ["app.py"],
+            "evidence_paths": ["worker_report.md", "review_report.md"],
+            "reuse_guidance": "Prefer explicit validation inputs when repairing similar failures.",
+        }
+        config = make_config(self.root, max_nodes=2, max_depth=1, builder_fanout=1, jobs=1)
+        store = SearchStore(config.run_dir / "sleepcode.sqlite3")
+
+        Scheduler(
+            config,
+            store=store,
+            git=FakeGit(config),
+            agents=FakeAgents(expostulation_entries=[entry]),
+            validator=FakeValidator(),
+        ).run()
+
+        entries = store.list_expostulation_entries()
+        self.assertEqual(entries[0]["kind"], "repair_pattern")
+        blackboard = (config.run_dir / "expostulation.md").read_text(encoding="utf-8")
+        self.assertIn("Keep validation inputs explicit", blackboard)
+        self.assertIn("Source node: `2`", blackboard)
 
 
 if __name__ == "__main__":
