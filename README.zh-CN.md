@@ -1,7 +1,7 @@
-# 🌙 sleepcode
+# 🌙 sleepcode — CS2
 
 <p align="center">
-  <b>基于树搜索的受限非交互式编码代理会话编排工具。</b>
+  <b>Coding-in-Sleep-2 (CS2)：基于树搜索的受限非交互式编码代理会话编排工具。</b>
 </p>
 
 <p align="center">
@@ -35,6 +35,7 @@
 - 📝 **丰富报告** — 生成面向人类的最终报告、结构化 JSON 摘要以及每个节点的详细产物。
 - ⏱️ **适合夜间运行** — 专为后台长时间运行设计。启动后安心睡觉，早上查看结果。
 - 🧪 **可插拔验证** — 支持自定义测试命令、自动发现单元测试，或仅编译的冒烟检查。
+- 🧠 **谏言黑板** — 每次运行维护一份共享知识面板，代理可以整理并复用高置信度的实现证据（已验证模块、修复模式、具体陷阱）。
 
 ## 🚀 快速开始
 
@@ -102,7 +103,7 @@ sleepcode run \
 默认值是为夜间运行而设，比较保守：
 
 ```bash
---max-nodes 8
+--max-nodes 16
 --max-depth 3
 --jobs 2
 --builder-fanout 3
@@ -112,7 +113,8 @@ sleepcode run \
 
 | 参数 | 说明 |
 | :--- | :--- |
-| `--max-nodes` | 总预算，包含根节点。默认 `8` 表示根节点 + 最多 7 个候选节点。 |
+| `--max-nodes` | 总预算，包含根节点。默认 `16` 表示根节点 + 最多 15 个候选节点。 |
+| `--day-mode` | 白天快速运行。如果没有同时显式指定 `--max-nodes`，则将其覆盖为 `8`。 |
 | `--builder-fanout` | 从干净基线出发的独立首次尝试数量。对于有多种可行设计的任务可以增大。 |
 | `--fixer-fanout` | 每个父节点的修复尝试上限。限制单个候选在整个运行中可获得的修复次数。 |
 | `--rebuilder-fanout` | 每个父节点的重建尝试上限。基于候选的意图和报告，从基线重新开始。 |
@@ -145,6 +147,16 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md
 ```
 
+**白天运行（更少节点）：**
+
+```bash
+sleepcode run \
+  --repo OmegaWiki \
+  --task-file task.md \
+  --guidelines-file guideline-for-cs.md \
+  --day-mode
+```
+
 **更广泛的设计搜索：**
 
 ```bash
@@ -152,7 +164,7 @@ sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
   --guidelines-file guideline-for-cs.md \
-  --max-nodes 12 \
+  --max-nodes 24 \
   --builder-fanout 4 \
   --fixer-fanout 2 \
   --rebuilder-fanout 2 \
@@ -206,6 +218,24 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md \
   --test-cmd "python -m pytest"
 ```
+
+## 📋 运行结束后
+
+## 🧠 谏言黑板
+
+CS2 维护一份每次运行独立的**谏言黑板**（`expostulation.md`），让代理能够在不同轮次之间复用来之不易的实现知识，而不是每次都重新发现。
+
+### 工作原理
+
+1. **每个节点完成** Worker 和 Review 后，一位**谏言代理（expostulator）**会读取 Worker 报告、Review 报告、验证结果、diff 证据以及当前黑板内容。
+2. 它只产出**基于具体证据的高置信度、可复用条目**，共分为三类：
+   - **`validated_module`（已验证模块）** — 实现良好且功能有用的代码，已通过验证且 Review 未提出反驳。
+   - **`repair_pattern`（修复模式）** — 纠正了（或很可能纠正）重复实现陷阱的具体修复模式。
+   - **`pitfall`（陷阱）** — 基于观察证据的具体失败模式或应避免的规则。
+3. 条目被追加到黑板。黑板**不是**审查、审计日志或猜测的载体；当证据不足时，产出空结果就是成功的结果。
+4. **所有后续代理**（Builder、Fixer、Rebuilder、Reviewer、Voter 以及最终报告）都会将 `expostulation.md` 作为共享运行证据读取。它们只复用相关条目，而 `task.md` 和 `guidelines.md` 仍是最高权威的指令来源。
+
+这一设计的动机是观察到代理在同级节点之间经常重复同样的错误或反复验证同一模块。黑板将这些教训转化为持久的、有证据支撑的上下文。
 
 ## 📋 运行结束后
 
@@ -264,6 +294,7 @@ rm -rf runs/<run-id>
 | `--agent-startup-timeout` | `120` | 终止没有初始输出的回合 |
 | `--agent-idle-timeout` | `300` | Codex 在无输出后终止 |
 | `--kimi-idle-timeout` | `0` | 禁用 Kimi 空闲超时（Kimi 可能会静默运行子代理很长时间） |
+| `--allow-network` | `false` | 允许 Codex 代理访问外部网络（用于测试需要调用外部 API 的场景） |
 
 候选工作区默认保留（`--keep-worktrees`）。如果你只想要报告和产物，请使用 `--cleanup-worktrees`。
 
@@ -289,7 +320,7 @@ rm -rf runs/<run-id>
             └───────────────┘
 ```
 
-调度器优先展开 Builder 种子，然后使用代理投票决定每个候选应该被修复、重建还是丢弃。
+调度器优先展开 Builder 种子，然后使用代理投票决定每个候选应该被修复、重建还是丢弃。随着节点陆续完成，谏言代理会将可复用的证据整理进共享黑板，这些证据会回流到所有后续代理轮次中。
 
 ## 📄 许可证
 

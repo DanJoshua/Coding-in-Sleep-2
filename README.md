@@ -1,7 +1,7 @@
-# 🌙 sleepcode
+# 🌙 sleepcode — CS2
 
 <p align="center">
-  <b>Tree-search orchestration for bounded non-interactive coding-agent sessions.</b>
+  <b>Coding-in-Sleep-2 (CS2): Tree-search orchestration for bounded non-interactive coding-agent sessions.</b>
 </p>
 
 <p align="center">
@@ -35,6 +35,7 @@
 - 📝 **Rich Reports** — Produces a final human-readable report plus structured JSON and per-node artifacts.
 - ⏱️ **Overnight Friendly** — Designed for background runs. Start it, go to sleep, inspect results in the morning.
 - 🧪 **Pluggable Validation** — Supports custom test commands, auto-discovered unit tests, or compile-only smoke checks.
+- 🧠 **Expostulation Blackboard** — Per-run shared knowledge surface where agents curate and reuse high-confidence implementation evidence (validated modules, repair patterns, concrete pitfalls).
 
 ## 🚀 Quick Start
 
@@ -102,7 +103,7 @@ sleepcode run \
 The defaults are intentionally modest for an overnight run:
 
 ```bash
---max-nodes 8
+--max-nodes 16
 --max-depth 3
 --jobs 2
 --builder-fanout 3
@@ -112,7 +113,8 @@ The defaults are intentionally modest for an overnight run:
 
 | Parameter | Description |
 | :--- | :--- |
-| `--max-nodes` | Total budget, including root. Default `8` means root + up to 7 candidates. |
+| `--max-nodes` | Total budget, including root. Default `16` means root + up to 15 candidates. |
+| `--day-mode` | Quick daytime run. Overrides `--max-nodes` to `8` unless you also set `--max-nodes` explicitly. |
 | `--builder-fanout` | Independent first attempts seeded from the untouched base. Increase for tasks with several plausible designs. |
 | `--fixer-fanout` | Per-parent repair attempts. Limits how many fixes a candidate can receive. |
 | `--rebuilder-fanout` | Per-parent fresh rebuilds. Starts again from base using a candidate's intent and reports. |
@@ -145,6 +147,16 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md
 ```
 
+**Daytime run (fewer nodes):**
+
+```bash
+sleepcode run \
+  --repo OmegaWiki \
+  --task-file task.md \
+  --guidelines-file guideline-for-cs.md \
+  --day-mode
+```
+
 **Broader design search:**
 
 ```bash
@@ -152,7 +164,7 @@ sleepcode run \
   --repo OmegaWiki \
   --task-file task.md \
   --guidelines-file guideline-for-cs.md \
-  --max-nodes 12 \
+  --max-nodes 24 \
   --builder-fanout 4 \
   --fixer-fanout 2 \
   --rebuilder-fanout 2 \
@@ -206,6 +218,24 @@ sleepcode run \
   --guidelines-file guideline-for-cs.md \
   --test-cmd "python -m pytest"
 ```
+
+## 📋 After The Run
+
+## 🧠 Expostulation Blackboard
+
+CS2 maintains a per-run **expostulation blackboard** (`expostulation.md`) so agents can reuse hard-won implementation knowledge instead of rediscovering it in every turn.
+
+### How it works
+
+1. **After each node completes** its worker and review, an **expostulator agent** reads the worker report, review report, validation result, diff evidence, and the current blackboard.
+2. It emits **only high-confidence, reusable entries** grounded in concrete evidence. There are three kinds:
+   - **`validated_module`** — Code that implements a useful function well, confirmed by passing validation and an un-contradicted review.
+   - **`repair_pattern`** — A concrete fix pattern that corrected (or is likely to correct) a repeated implementation pitfall.
+   - **`pitfall`** — A concrete failure mode or avoidance rule backed by observed evidence.
+3. Entries are appended to the blackboard. The blackboard is **not** a review, audit log, or speculation surface; an empty result is a successful result when the evidence is weak.
+4. **All subsequent agents** (builders, fixers, rebuilders, reviewers, voters, and the final report) read `expostulation.md` as shared run evidence. They reuse only relevant entries, while `task.md` and `guidelines.md` remain the authoritative source of truth.
+
+This design is inspired by the observation that agents often repeat the same mistakes or re-validate the same modules across sibling nodes. The blackboard turns those lessons into durable, evidence-backed context.
 
 ## 📋 After The Run
 
@@ -264,6 +294,7 @@ If you started the run with `--cleanup-worktrees`, sleepcode removes candidate w
 | `--agent-startup-timeout` | `120` | Kill a turn that produces no initial output |
 | `--agent-idle-timeout` | `300` | Kill Codex turns after no output |
 | `--kimi-idle-timeout` | `0` | Disable Kimi idle timeout (Kimi may run sub-agents silently) |
+| `--allow-network` | `false` | Allow Codex agents outbound network access (tests that hit external APIs) |
 
 Candidate worktrees are kept by default (`--keep-worktrees`). Use `--cleanup-worktrees` when you only want reports and artifacts.
 
@@ -289,7 +320,7 @@ Candidate worktrees are kept by default (`--keep-worktrees`). Use `--cleanup-wor
             └───────────────┘
 ```
 
-The scheduler expands builder seeds first, then uses agent voting to decide whether each candidate should be fixed, rebuilt, or dropped.
+The scheduler expands builder seeds first, then uses agent voting to decide whether each candidate should be fixed, rebuilt, or dropped. As nodes complete, the expostulator curates reusable evidence into the shared blackboard, which feeds back into all later agent turns.
 
 ## 📄 License
 

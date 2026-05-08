@@ -22,7 +22,18 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--guidelines-file", required=True, type=Path, help="guidelines markdown file")
     run.add_argument("--base", default="HEAD")
     run.add_argument("--out", default=Path("runs"), type=Path)
-    run.add_argument("--max-nodes", default=8, type=int)
+    run.add_argument(
+        "--max-nodes",
+        default=None,
+        type=int,
+        help="total node budget including root (default: 16, or 8 with --day-mode)",
+    )
+    run.add_argument(
+        "--day-mode",
+        action="store_true",
+        default=False,
+        help="quick daytime run; reduces default --max-nodes to 8 unless explicitly set",
+    )
     run.add_argument("--max-depth", default=3, type=int)
     run.add_argument("--jobs", default=2, type=int)
     run.add_argument("--builder-fanout", default=3, type=int)
@@ -39,6 +50,7 @@ def build_parser() -> argparse.ArgumentParser:
     worktree_group = run.add_mutually_exclusive_group()
     worktree_group.add_argument("--keep-worktrees", action="store_true", default=True)
     worktree_group.add_argument("--cleanup-worktrees", action="store_false", dest="keep_worktrees")
+    run.add_argument("--allow-network", action="store_true", default=False, dest="allow_network", help="allow outbound network access for Codex agents")
     run.add_argument("--agent-timeout", default=3600, type=int, dest="agent_timeout")
     run.add_argument("--agent-startup-timeout", default=120, type=int, dest="agent_startup_timeout")
     run.add_argument("--agent-idle-timeout", default=300, type=int, dest="agent_idle_timeout")
@@ -64,7 +76,6 @@ def config_from_args(args: argparse.Namespace, cwd: Path | None = None) -> RunCo
         raise SystemExit("task file is empty")
     if not guidelines:
         raise SystemExit("guidelines file is empty")
-    _validate_positive(args.max_nodes, "--max-nodes", minimum=2)
     _validate_positive(args.max_depth, "--max-depth", minimum=1)
     _validate_positive(args.jobs, "--jobs", minimum=1)
     _validate_positive(args.builder_fanout, "--builder-fanout", minimum=1)
@@ -74,6 +85,11 @@ def config_from_args(args: argparse.Namespace, cwd: Path | None = None) -> RunCo
     _validate_positive(args.agent_startup_timeout, "--agent-startup-timeout", minimum=1)
     _validate_positive(args.agent_idle_timeout, "--agent-idle-timeout", minimum=1)
     _validate_positive(args.kimi_idle_timeout, "--kimi-idle-timeout", minimum=0)
+    if args.max_nodes is None:
+        max_nodes = 8 if args.day_mode else 16
+    else:
+        max_nodes = args.max_nodes
+    _validate_positive(max_nodes, "--max-nodes", minimum=2)
     agents = parse_agents(args.agents)
     out_dir = _resolve(args.out, cwd)
     run_dir = ensure_unique_dir(out_dir / make_run_id())
@@ -87,7 +103,7 @@ def config_from_args(args: argparse.Namespace, cwd: Path | None = None) -> RunCo
         out_dir=out_dir,
         run_id=run_dir.name,
         run_dir=run_dir,
-        max_nodes=args.max_nodes,
+        max_nodes=max_nodes,
         max_depth=args.max_depth,
         jobs=args.jobs,
         builder_fanout=args.builder_fanout,
@@ -98,6 +114,7 @@ def config_from_args(args: argparse.Namespace, cwd: Path | None = None) -> RunCo
         model=args.model,
         sandbox=args.sandbox,
         keep_worktrees=args.keep_worktrees,
+        allow_network=args.allow_network,
         agent_timeout_seconds=args.agent_timeout,
         agent_startup_timeout_seconds=args.agent_startup_timeout,
         agent_idle_timeout_seconds=args.agent_idle_timeout,
